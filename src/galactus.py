@@ -1,4 +1,3 @@
-
 class Galactus:
     def __init__(self, x, y, energy=999, color="purple"):
         self.x = x
@@ -11,7 +10,7 @@ class Galactus:
         return f"Galactus({self.x},{self.y},Active={self.active})"
 
     def move_toward(self, grid, target_x, target_y):
-        """Moves slowly (every 2 turns) toward Franklin Richards."""
+        """Moves slowly (speed depends on difficulty) toward Franklin Richards."""
         if not self.active:
             return
 
@@ -24,15 +23,26 @@ class Galactus:
         grid.move_entity(self, dx, dy)
 
     def destroy(self, grid, bridges, heroes):
-        """Destroys anything in his path: bridges or heroes."""
+        """
+        Destroys anything in his path: bridges or heroes.
+        Returns a tuple: (bridges_destroyed, heroes_destroyed).
+        """
+        bridges_destroyed = 0
+        heroes_destroyed = 0
+
         # Destroy bridges
         for bridge in bridges:
-            if self.x == bridge.x and self.y == bridge.y:
+            if self.x == bridge.x and self.y == bridge.y and bridge.repaired:
                 bridge.repaired = False
-                print(f"💥 Galactus destroyed bridge at ({bridge.x},{bridge.y})!")
+                bridges_destroyed += 1
+                print(f" Galactus destroyed bridge at ({bridge.x},{bridge.y})!")
 
         # Destroy heroes
         for hero in heroes:
-            if hero.x == self.x and hero.y == self.y:
+            if getattr(hero, "active", True) and hero.x == self.x and hero.y == self.y:
+                hero.active = False
                 hero.energy = 0
-                print(f"💀 Galactus crushed {hero.name}!")
+                heroes_destroyed += 1
+                print(f" Galactus crushed {hero.name}!")
+
+        return bridges_destroyed, heroes_destroyed

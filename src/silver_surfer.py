@@ -1,4 +1,3 @@
-
 import random
 
 class SilverSurfer:
@@ -39,11 +38,16 @@ class SilverSurfer:
         grid.move_entity(self, dx, dy)
 
     def sabotage(self, bridges):
-        """Turn a repaired bridge back into damaged."""
+        """
+        Turn a repaired bridge back into damaged.
+        Returns True if sabotage happened, otherwise False.
+        """
         for bridge in bridges:
             if self.x == bridge.x and self.y == bridge.y and bridge.repaired:
                 bridge.repaired = False
-                print(f" Silver Surfer sabotaged bridge at ({bridge.x},{bridge.y})!")
+                print(f"⚡ Silver Surfer sabotaged bridge at ({bridge.x},{bridge.y})!")
+                return True
+        return False
 
     def should_withdraw(self):
         """Withdraw when energy < 20%."""

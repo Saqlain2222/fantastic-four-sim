@@ -17,21 +17,30 @@ class Simulation:
             Hero("Ben", color="orange"),
         ]
         self.turns = turns
-        self.difficulty = difficulty  # <-- new difficulty setting
+        self.difficulty = difficulty
+
+        # Stats tracking
+        self.turns_survived = 0
+        self.bridges_repaired_count = 0
+        self.bridges_sabotaged_count = 0
+        self.bridges_destroyed_count = 0
+        self.heroes_collapsed_count = 0
+        self.heroes_destroyed_count = 0
 
         # Place heroes
         for i, hero in enumerate(self.heroes):
             self.grid.place_entity(hero, i, 0)
 
-        # Place bridges
-        self.bridges = [
-            Bridge(10, 10),
-            Bridge(15, 5),
-            Bridge(5, 15),
-        ]
+        # Place bridges randomly
+        self.bridges = []
+        for _ in range(3):
+            bx, by = random.randint(0, grid_size - 1), random.randint(0, grid_size - 1)
+            self.bridges.append(Bridge(bx, by))
+        print(" Bridges placed at:", [(b.x, b.y) for b in self.bridges])
 
-        # Add Franklin Richards (target to protect)
-        self.franklin = Franklin(grid_size // 2, grid_size // 2)
+        # Place Franklin Richards randomly
+        self.franklin = Franklin(random.randint(0, grid_size - 1), random.randint(0, grid_size - 1))
+        print(f" Franklin placed at: ({self.franklin.x},{self.franklin.y})")
 
         # Add Silver Surfer
         self.surfer = SilverSurfer(0, grid_size - 1)
@@ -59,40 +68,47 @@ class Simulation:
 
         for turn in range(self.turns):
             print(f"\nTurn {turn+1}")
+            self.turns_survived = turn + 1
 
             # -----------------------------
             # HERO ACTIONS (difficulty-based)
             # -----------------------------
             for hero in self.heroes:
-                if hero.energy > 0:
-                    if self.difficulty == "easy":
-                        # Always repair bridges
+                if not getattr(hero, "active", True):  # skip inactive heroes
+                    continue
+
+                if hero.energy <= 0:
+                    hero.active = False
+                    self.heroes_collapsed_count += 1
+                    print(f" {hero.name} has collapsed from exhaustion!")
+                    continue
+
+                if self.difficulty == "easy":
+                    target = self.nearest_damaged_bridge(hero)
+                    if target:
+                        hero.move_toward(self.grid, target.x, target.y)
+                    else:
+                        hero.move_random(self.grid)
+
+                elif self.difficulty == "normal":
+                    if random.random() < 0.8:
                         target = self.nearest_damaged_bridge(hero)
                         if target:
                             hero.move_toward(self.grid, target.x, target.y)
-                        else:
-                            hero.move_random(self.grid)
-
-                    elif self.difficulty == "normal":
-                        # 80% chance smart, 20% chance wander
-                        if random.random() < 0.8:
-                            target = self.nearest_damaged_bridge(hero)
-                            if target:
-                                hero.move_toward(self.grid, target.x, target.y)
-                        else:
-                            hero.move_random(self.grid)
-
-                    elif self.difficulty == "hard":
-                        # Dumb heroes wander aimlessly
+                    else:
                         hero.move_random(self.grid)
 
-                    # Repair if standing on a bridge
-                    for bridge in self.bridges:
-                        if hero.x == bridge.x and hero.y == bridge.y and not bridge.repaired:
-                            bridge.repair()
-                            print(f"{hero.name} repaired bridge at ({bridge.x},{bridge.y})!")
+                elif self.difficulty == "hard":
+                    hero.move_random(self.grid)
 
-                    print(hero)
+                # Repair if standing on a bridge
+                for bridge in self.bridges:
+                    if hero.x == bridge.x and hero.y == bridge.y and not bridge.repaired:
+                        bridge.repair()
+                        self.bridges_repaired_count += 1
+                        print(f"{hero.name} repaired bridge at ({bridge.x},{bridge.y})!")
+
+                print(hero)
 
             # -----------------------------
             # SILVER SURFER
@@ -105,7 +121,9 @@ class Simulation:
                 target_bridge = self.surfer.nearest_repaired_bridge(self.bridges)
                 if target_bridge:
                     self.surfer.move_toward(self.grid, target_bridge.x, target_bridge.y, self.heroes)
-                self.surfer.sabotage(self.bridges)
+                sabotaged = self.surfer.sabotage(self.bridges)
+                if sabotaged:
+                    self.bridges_sabotaged_count += 1
 
                 if self.surfer.should_withdraw():
                     print(" Silver Surfer withdrew due to low energy!")
@@ -120,22 +138,19 @@ class Simulation:
 
             if self.galactus.active:
                 if self.difficulty == "easy":
-                    # very slow Galactus (every 3 turns)
                     if turn % 3 == 0:
                         self.galactus.move_toward(self.grid, self.franklin.x, self.franklin.y)
-
                 elif self.difficulty == "normal":
-                    # medium speed (every 2 turns)
                     if turn % 2 == 0:
                         self.galactus.move_toward(self.grid, self.franklin.x, self.franklin.y)
-
                 elif self.difficulty == "hard":
-                    # fast Galactus (every turn)
                     self.galactus.move_toward(self.grid, self.franklin.x, self.franklin.y)
 
-                self.galactus.destroy(self.grid, self.bridges, self.heroes)
+                # Destruction log with counts
+                b_destroyed, h_destroyed = self.galactus.destroy(self.grid, self.bridges, self.heroes)
+                self.bridges_destroyed_count += b_destroyed
+                self.heroes_destroyed_count += h_destroyed
 
-                # Check loss condition
                 if self.galactus.x == self.franklin.x and self.galactus.y == self.franklin.y:
                     print(" Galactus has reached Franklin Richards! Earth is lost!")
                     break
@@ -150,6 +165,24 @@ class Simulation:
                 break
 
             time.sleep(0.3)
+
+        # -----------------------------
+        # GAME SUMMARY
+        # -----------------------------
+        print("\n===== GAME SUMMARY =====")
+        print(f"Turns survived: {self.turns_survived}")
+        print(f"Bridges repaired: {self.bridges_repaired_count}")
+        print(f"Bridges sabotaged (Silver Surfer): {self.bridges_sabotaged_count}")
+        print(f"Bridges destroyed (Galactus): {self.bridges_destroyed_count}")
+        print(f"Heroes collapsed (exhaustion): {self.heroes_collapsed_count}")
+        print(f"Heroes destroyed (Galactus): {self.heroes_destroyed_count}")
+        alive_heroes = [h.name for h in self.heroes if getattr(h, "active", True)]
+        print(f"Heroes alive: {alive_heroes if alive_heroes else 'None'}")
+        if self.all_bridges_repaired():
+            print("Final outcome: Victory ")
+        else:
+            print("Final outcome: Defeat ")
+        print("========================\n")
 
         print("Simulation finished.")
         self.gui.root.mainloop()
