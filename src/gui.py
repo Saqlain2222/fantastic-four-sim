@@ -3,10 +3,11 @@ import tkinter as tk
 CELL_SIZE = 25
 
 class SimulationGUI:
-    def __init__(self, grid, heroes, bridges):
+    def __init__(self, grid, heroes, bridges, surfer=None):
         self.grid = grid
         self.heroes = heroes
         self.bridges = bridges
+        self.surfer = surfer
 
         self.root = tk.Tk()
         self.root.title("Fantastic Four Simulation")
@@ -25,14 +26,20 @@ class SimulationGUI:
             for x in range(self.grid.size):
                 color = "white"
 
-                # Check if this is a bridge
+                # Bridges
                 for bridge in self.bridges:
                     if bridge.x == x and bridge.y == y:
                         color = "yellow" if not bridge.repaired else "green"
 
+                # Silver Surfer
+                if self.surfer and self.surfer.active:
+                    if self.surfer.x == x and self.surfer.y == y:
+                        color = self.surfer.color
+
+                # Heroes
                 entity = self.grid.cells[y][x]
-                if entity is not None:
-                    color = getattr(entity, "color", "blue")
+                if entity is not None and hasattr(entity, "color"):
+                    color = entity.color
 
                 self.canvas.create_rectangle(
                     x * CELL_SIZE, y * CELL_SIZE,

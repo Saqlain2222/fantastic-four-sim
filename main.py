@@ -1,7 +1,7 @@
 from src.simulation import Simulation
 
 def main():
-    sim = Simulation(grid_size=20, turns=50)
+    sim = Simulation(grid_size=20, turns=100)
     sim.run()
 
 if __name__ == "__main__":
