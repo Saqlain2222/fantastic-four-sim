@@ -1,12 +1,12 @@
-
 import tkinter as tk
 
 CELL_SIZE = 25
 
 class SimulationGUI:
-    def __init__(self, grid, heroes):
+    def __init__(self, grid, heroes, bridges):
         self.grid = grid
         self.heroes = heroes
+        self.bridges = bridges
 
         self.root = tk.Tk()
         self.root.title("Fantastic Four Simulation")
@@ -24,6 +24,11 @@ class SimulationGUI:
         for y in range(self.grid.size):
             for x in range(self.grid.size):
                 color = "white"
+
+                # Check if this is a bridge
+                for bridge in self.bridges:
+                    if bridge.x == x and bridge.y == y:
+                        color = "yellow" if not bridge.repaired else "green"
 
                 entity = self.grid.cells[y][x]
                 if entity is not None:
